@@ -44,7 +44,7 @@ export const getKPIStats = async (req, res) => {
       const orderYear = created.getUTCFullYear();
 
       stats.totalOrders += 1;
-      stats.totalRevenue += order.totalAmount;
+      stats.totalRevenue += order.netPayable;
 
       const isCurrentMonth =
         orderMonth === currentMonth && orderYear === currentYear;
@@ -56,16 +56,16 @@ export const getKPIStats = async (req, res) => {
 
       if (isCurrentMonth) {
         stats.currentMonthOrders += 1;
-        stats.monthlyRevenue += order.totalAmount;
+        stats.monthlyRevenue += order.netPayable;
       }
 
       if (isPreviousMonth) {
-        stats.previousMonthlyRevenue += order.totalAmount;
+        stats.previousMonthlyRevenue += order.netPayable;
         stats.previousMonthOrders += 1;
       }
 
-      if (isCurrentYear) stats.yearlyRevenue += order.totalAmount;
-      if (isPreviousYear) stats.previousYearRevenue += order.totalAmount;
+      if (isCurrentYear) stats.yearlyRevenue += order.netPayable;
+      if (isPreviousYear) stats.previousYearRevenue += order.netPayable;
     }
 
     for (const item of orderItems) {
@@ -191,7 +191,7 @@ export const getRevenueBreakdown = async (req, res) => {
         dataMap[key] = { label: key, Retailer: 0, Wholesaler: 0 };
       }
 
-      dataMap[key][customerType] += order.totalAmount;
+      dataMap[key][customerType] += order.netPayable;
     }
 
     let breakdown = [];
@@ -316,7 +316,7 @@ export const getMonthlyRevenueVsExpense = async (req, res) => {
       const date = new Date(order.createdAt);
       if (date.getFullYear() === selectedYear) {
         const monthIndex = date.getMonth();
-        monthlyData[monthIndex].Revenue += order.totalAmount;
+        monthlyData[monthIndex].Revenue += order.netPayable;
       }
     }
 
@@ -364,7 +364,7 @@ export const getNetProfitTrend = async (req, res) => {
       const date = new Date(order.createdAt);
       if (date.getFullYear() === selectedYear) {
         const monthIndex = date.getMonth();
-        trend[monthIndex].Revenue += order.totalAmount;
+        trend[monthIndex].Revenue += order.netPayable;
       }
     }
 
@@ -407,7 +407,7 @@ export const getTopCustomers = async (req, res) => {
           totalSpent: 0,
         };
       }
-      revenueMap[id].totalSpent += order.totalAmount;
+      revenueMap[id].totalSpent += order.netPayable;
     }
 
     const sorted = Object.values(revenueMap).sort(
@@ -491,7 +491,7 @@ export const getTopCustomersByRevenue = async (req, res) => {
       const customerId = order.customer?._id?.toString();
       if (!customerId) continue;
       revenueMap[customerId] =
-        (revenueMap[customerId] || 0) + order.totalAmount;
+        (revenueMap[customerId] || 0) + order.netPayable;
     }
 
     const customers = await Customer.find({});
@@ -563,7 +563,7 @@ export const getMonthlyOrderAndRevenueTrend = async (req, res) => {
       if (date.getFullYear() === selectedYear) {
         const monthIndex = date.getMonth();
         monthlyData[monthIndex].orders += 1;
-        monthlyData[monthIndex].revenue += order.totalAmount;
+        monthlyData[monthIndex].revenue += order.netPayable;
       }
     }
 
@@ -623,7 +623,7 @@ export const getAverageOrderValueTrend = async (req, res) => {
       const date = new Date(order.createdAt);
       if (date.getFullYear() === selectedYear) {
         const monthIndex = date.getMonth();
-        monthlyData[monthIndex].totalAmount += order.totalAmount;
+        monthlyData[monthIndex].totalAmount += order.netPayable;
         monthlyData[monthIndex].orderCount++;
       }
     }
@@ -847,7 +847,7 @@ export const getCustomerSegments = async (req, res) => {
     for (const order of orders) {
       const id = order.customer?._id;
       if (!id) continue;
-      map[id] = (map[id] || 0) + order.totalAmount;
+      map[id] = (map[id] || 0) + order.netPayable;
     }
 
     let high = 0,
@@ -904,7 +904,7 @@ export const getRevenueByCity = async (req, res) => {
         };
       }
 
-      cityMap[key].revenue += order.totalAmount;
+      cityMap[key].revenue += order.netPayable;
     }
 
     const result = Object.values(cityMap);

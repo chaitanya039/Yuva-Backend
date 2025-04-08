@@ -8,6 +8,7 @@ import {
   getOrdersByCustomerType,
   getRecentOrders,
   exportOrders,
+  updateOrderPayment,
 } from '../controllers/order.controller.js';
 
 import { protect } from '../middlewares/auth.middleware.js';
@@ -19,6 +20,9 @@ router.post("/", protect, createOrder);
 
 // 🔹 Update Order (Edit status or full update)
 router.put("/:id", protect, updateOrder);
+
+// 🔹 Update Payment of order
+router.patch("/:id/payment", updateOrderPayment);
 
 // 🔹 Delete Order
 router.delete("/:id", protect, deleteOrder);

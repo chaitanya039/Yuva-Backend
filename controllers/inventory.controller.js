@@ -1,5 +1,5 @@
 import Product from "../models/Product.js";
-import StockHistory from "../models/StockHistory,js";
+import StockHistory from "../models/StockHistory.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import moment from "moment";
 import Order from "../models/Order.js";
