@@ -1,6 +1,5 @@
 // payment.analysis.controller.js
 import Order from "../models/Order.js";
-import Customer from "../models/Customer.js";
 import ApiResponse from "../utils/ApiResponse.js";
 
 export const getTotalRevenueCollected = async (req, res) => {
@@ -25,13 +24,21 @@ export const getTotalRevenueCollected = async (req, res) => {
       0
     );
 
-    return res.status(200).json(
-      new ApiResponse(200, { totalCollected }, "Total Revenue Collected")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, { totalCollected }, "Total Revenue Collected")
+      );
   } catch (error) {
-    return res.status(500).json(
-      new ApiResponse(500, {}, `Error fetching total revenue: ${error.message}`)
-    );
+    return res
+      .status(500)
+      .json(
+        new ApiResponse(
+          500,
+          {},
+          `Error fetching total revenue: ${error.message}`
+        )
+      );
   }
 };
 
@@ -39,31 +46,42 @@ export const getOutstandingBalance = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const filter = {
-      "payment.amountPaid": { $lt: "$netPayable" },
+    const match = {
+      $expr: { $lt: ["$payment.amountPaid", "$netPayable"] },
       status: { $nin: ["Cancelled", "Rejected"] },
     };
 
     if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
     }
 
-    const orders = await Order.find(filter);
+    const orders = await Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          totalOutstanding: {
+            $sum: { $subtract: ["$netPayable", "$payment.amountPaid"] },
+          },
+        },
+      },
+    ]);
 
-    const totalOutstanding = orders.reduce(
-      (acc, order) => acc + (order.netPayable - order.payment.amountPaid),
-      0
-    );
+    const totalOutstanding = orders[0]?.totalOutstanding || 0;
 
-    return res.status(200).json(
-      new ApiResponse(200, { totalOutstanding }, "Total Outstanding Balance")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, { totalOutstanding }, "Total Outstanding Balance")
+      );
   } catch (error) {
     return res
       .status(500)
-      .json(new ApiResponse(500, {}, `Error fetching balance: ${error.message}`));
+      .json(
+        new ApiResponse(500, {}, `Error fetching balance: ${error.message}`)
+      );
   }
 };
 
@@ -93,15 +111,21 @@ export const getAverageRecoveryPercentage = async (req, res) => {
     }
 
     const avgRecovery =
-      totalPayable === 0 ? 0 : ((totalCollected / totalPayable) * 100).toFixed(2);
+      totalPayable === 0
+        ? 0
+        : ((totalCollected / totalPayable) * 100).toFixed(2);
 
-    return res.status(200).json(
-      new ApiResponse(200, { avgRecovery }, "Average Recovery Percentage")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, { avgRecovery }, "Average Recovery Percentage")
+      );
   } catch (error) {
-    return res.status(500).json(
-      new ApiResponse(500, {}, `Failed to fetch recovery %: ${error.message}`)
-    );
+    return res
+      .status(500)
+      .json(
+        new ApiResponse(500, {}, `Failed to fetch recovery %: ${error.message}`)
+      );
   }
 };
 
@@ -279,52 +303,47 @@ export const getTopCustomersPaymentBehavior = async (req, res) => {
 
     behaviorData.sort((a, b) => b.totalPaid - a.totalPaid);
 
-    return res.status(200).json(
-      new ApiResponse(200, behaviorData.slice(0, 20), "Top Customers Payment Behavior")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          behaviorData.slice(0, 20),
+          "Top Customers Payment Behavior"
+        )
+      );
   } catch (error) {
     return res.status(500).json(new ApiResponse(500, {}, error.message));
   }
 };
 
-export const getCustomerPaymentConsistency = async (req, res) => {
+export const getMonthlyCollectionTrend = async (req, res) => {
   try {
-    const orders = await Order.find({}).populate("customer");
+    const { startDate, endDate } = req.query;
+    const match = {};
 
-    const customerMap = {};
-
-    for (const order of orders) {
-      const customerId = order.customer?._id?.toString();
-      if (!customerId || !order.dueDate) continue;
-
-      const paidOnTime =
-        order.payment.amountPaid >= order.netPayable &&
-        new Date(order.updatedAt) <= new Date(order.dueDate);
-
-      if (!customerMap[customerId]) {
-        customerMap[customerId] = {
-          name: order.customer.name,
-          email: order.customer.email,
-          totalOrders: 0,
-          onTimePayments: 0,
-        };
-      }
-
-      customerMap[customerId].totalOrders += 1;
-      if (paidOnTime) customerMap[customerId].onTimePayments += 1;
+    if (startDate || endDate) {
+      match.orderDate = {};
+      if (startDate) match.orderDate.$gte = new Date(startDate);
+      if (endDate) match.orderDate.$lte = new Date(endDate);
     }
 
-    const result = Object.values(customerMap).map((c) => ({
-      name: c.name,
-      email: c.email,
-      totalOrders: c.totalOrders,
-      consistencyIndex: Number(((c.onTimePayments / c.totalOrders) * 100).toFixed(2)),
-    }));
+    const data = await Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$orderDate" } },
+          total: { $sum: "$payment.amountPaid" },
+        },
+      },
+      { $sort: { _id: 1 } },
+      { $project: { month: "$_id", total: 1, _id: 0 } },
+    ]);
 
-    return res.status(200).json(
-      new ApiResponse(200, result, "Customer Payment Consistency Index")
-    );
-  } catch (error) {
-    return res.status(500).json(new ApiResponse(500, {}, error.message));
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
+
