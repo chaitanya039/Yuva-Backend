@@ -28,6 +28,7 @@ import reportRoutes from "./routes/report.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import paymentAnalysisRoutes from "./routes/payment.analysis.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 
 // Route Middleware
@@ -43,6 +44,8 @@ app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/payments", paymentAnalysisRoutes); 
+app.use("/api/v1/users", userRoutes); 
+
 // 404 Handler
 app.use("*", (req, res) => {
   res.status(404).json({ message: "Route not found" });
