@@ -28,16 +28,13 @@ const customerSchema = new mongoose.Schema(
       enum: ["Retailer", "Wholesaler"],
       required: true,
     },
-    city: {
-      type: String,
-    },
+    city: String,
     profileImg: {
       type: String,
       default: "",
     },
     profileImgPublicId: String,
 
-    // 🌍 Location field for GeoJSON point
     location: {
       type: {
         type: String,
@@ -55,67 +52,50 @@ const customerSchema = new mongoose.Schema(
   }
 );
 
-// 🔒 Hash password
+// 🔒 Hash password + 🌐 Geocode City to Coordinates
 customerSchema.pre("save", async function (next) {
+  // Hash password if modified
   if (this.isModified("password")) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }
 
-  customerSchema.pre("save", async function (next) {
-    if (this.isModified("password")) {
-      const salt = await bcrypt.genSalt(10);
-      this.password = await bcrypt.hash(this.password, salt);
-    }
+  // Geocode location if city is modified
+  if (this.isModified("city") && this.city) {
+    try {
+      const res = await axios.get("https://nominatim.openstreetmap.org/search", {
+        params: {
+          city: this.city,
+          format: "json",
+          limit: 1,
+        },
+        headers: {
+          "User-Agent": "Yuva-Plastics-Dashboard/1.0 (admin@yuvaplastics.com)",
+        },
+      });
 
-    // 🌐 Set location from city
-    if (this.isModified("city") && this.city) {
-      try {
-        const res = await axios.get(
-          "https://nominatim.openstreetmap.org/search",
-          {
-            params: {
-              city: this.city,
-              format: "json",
-              limit: 1,
-            },
-            headers: {
-              "User-Agent":
-                "Yuva-Plastics-Dashboard/1.0 (admin@yuvaplastics.com)",
-            },
-          }
-        );
-
-        if (res.data.length > 0) {
-          const { lat, lon } = res.data[0];
-          this.location = {
-            type: "Point",
-            coordinates: [parseFloat(lon), parseFloat(lat)],
-          };
-        } else {
-          // Default fallback if no result found
-          this.location = {
-            type: "Point",
-            coordinates: [0, 0],
-          };
-        }
-      } catch (err) {
-        console.error("Geocoding error:", err.message);
-        // Set to fallback location if API fails
+      if (res.data.length > 0) {
+        const { lat, lon } = res.data[0];
         this.location = {
           type: "Point",
-          coordinates: [0, 0],
+          coordinates: [parseFloat(lon), parseFloat(lat)],
         };
+      } else {
+        // Invalid city: throw to notify frontend
+        const err = new Error("Invalid city name");
+        err.statusCode = 400;
+        return next(err);
       }
+    } catch (err) {
+      console.error("Geocoding error:", err.message);
+      return next(new Error("City geocoding failed"));
     }
-
-    next();
-  });
+  }
 
   next();
 });
 
-// 🔐 Password match method
+// 🔐 Compare Password
 customerSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

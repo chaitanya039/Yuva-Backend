@@ -5,27 +5,54 @@ import Product from "../models/Product.js";
 import Customer from "../models/Customer.js";
 import ApiResponse from "../utils/ApiResponse.js";
 
-// 🔸 Customer requests order
 export const createOrderRequest = async (req, res) => {
   try {
-    const { items, note, specialInstructions } = req.body;
+    const { items, customerNote } = req.body;
 
-    if (!items || !items.length) {
-      return res.status(400).json(new ApiResponse(400, {}, "No items provided"));
+    // Check for customer on request (must be set via auth middleware)
+    if (!req.customer || !req.customer._id) {
+      return res.status(401).json(new ApiResponse(401, {}, "Unauthorized request"));
     }
 
+    // Validate items
+    if (!Array.isArray(items) || items.length === 0) {
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, "At least one item is required"));
+    }
+
+    // Validate item format
+    for (const item of items) {
+      if (
+        !item.product ||
+        typeof item.product !== "string" ||
+        !item.quantity ||
+        typeof item.quantity !== "number" ||
+        item.quantity < 1
+      ) {
+        return res
+          .status(400)
+          .json(new ApiResponse(400, {}, "Invalid item structure or quantity"));
+      }
+    }
+
+    // Create order
     const orderRequest = await OrderRequest.create({
       customer: req.customer._id,
       items,
-      note,
-      specialInstructions,
+      customerNote,
+      status: "Pending",
+      requestedAt: new Date(),
     });
 
     return res
       .status(201)
-      .json(new ApiResponse(201, orderRequest, "Order request submitted"));
+      .json(new ApiResponse(201, orderRequest, "Order request submitted successfully"));
   } catch (error) {
-    return res.status(500).json(new ApiResponse(500, {}, error.message));
+    console.error("Create Order Request Error:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, "Failed to create order request"));
   }
 };
 

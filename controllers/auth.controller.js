@@ -100,7 +100,7 @@ export const loginUser = async (req, res) => {
 
 export const registerCustomer = async (req, res) => {
   try {
-    const { name, email, phone, password, type, address } = req.body;
+    const { name, email, phone, password, type, city } = req.body;
 
     const exists = await Customer.findOne({ email });
     if (exists)
@@ -120,9 +120,17 @@ export const registerCustomer = async (req, res) => {
       phone,
       password,
       type,
-      address,
+      city,
       profileImg: profileImgUrl,
     });
+    
+    const token = jwt.sign(
+      { id: customer._id, type: "customer" },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     return res.status(201).json(
       new ApiResponse(
@@ -132,7 +140,9 @@ export const registerCustomer = async (req, res) => {
           name: customer.name,
           email: customer.email,
           type: customer.type,
+          city: customer.city,
           profileImg: customer.profileImg,
+          token
         },
         "Customer registered successfully"
       )
@@ -176,6 +186,7 @@ export const loginCustomer = async (req, res) => {
           name: customer.name,
           email: customer.email,
           type: customer.type,
+          city: customer.city,
           profileImg: customer.profileImg,
           token
         },
@@ -203,7 +214,7 @@ export const getCurrentUser = async (req, res) => {
         }, "Logged-in user profile")
       );
     } else if (req.customer) {
-      const { _id, name, email, profileImg, type } = req.customer;
+      const { _id, name, email, profileImg, type, phone, city, location } = req.customer;
       return res.status(200).json(
         new ApiResponse(200, {
           _id,
@@ -211,6 +222,9 @@ export const getCurrentUser = async (req, res) => {
           email,
           profileImg,
           type,
+          phone,
+          city, 
+          location
         }, "Logged-in customer profile")
       );
     } else {

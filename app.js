@@ -3,12 +3,22 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 const app = express();
+const allowedOrigins = (process.env.CORS_ORIGINS || "").split(",");
 
 // Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      console.log("CORS request from:", origin);
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
@@ -30,7 +40,6 @@ import inventoryRoutes from "./routes/inventory.routes.js";
 import paymentAnalysisRoutes from "./routes/payment.analysis.routes.js";
 import userRoutes from "./routes/user.routes.js";
 
-
 // Route Middleware
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/categories", categoryRoutes);
@@ -43,8 +52,8 @@ app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
-app.use("/api/v1/payments", paymentAnalysisRoutes); 
-app.use("/api/v1/users", userRoutes); 
+app.use("/api/v1/payments", paymentAnalysisRoutes);
+app.use("/api/v1/users", userRoutes);
 
 // 404 Handler
 app.use("*", (req, res) => {
