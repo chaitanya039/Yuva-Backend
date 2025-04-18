@@ -11,7 +11,9 @@ export const createOrderRequest = async (req, res) => {
 
     // Check for customer on request (must be set via auth middleware)
     if (!req.customer || !req.customer._id) {
-      return res.status(401).json(new ApiResponse(401, {}, "Unauthorized request"));
+      return res
+        .status(401)
+        .json(new ApiResponse(401, {}, "Unauthorized request"));
     }
 
     // Validate items
@@ -47,7 +49,13 @@ export const createOrderRequest = async (req, res) => {
 
     return res
       .status(201)
-      .json(new ApiResponse(201, orderRequest, "Order request submitted successfully"));
+      .json(
+        new ApiResponse(
+          201,
+          orderRequest,
+          "Order request submitted successfully"
+        )
+      );
   } catch (error) {
     console.error("Create Order Request Error:", error);
     return res
@@ -60,13 +68,19 @@ export const createOrderRequest = async (req, res) => {
 export const approveOrderRequest = async (req, res) => {
   try {
     const request = await OrderRequest.findById(req.params.id);
+    const decisionNote = req.body.decisionNote;
+
     if (!request || request.status !== "Pending") {
-      return res.status(400).json(new ApiResponse(400, {}, "Invalid or already processed request"));
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, "Invalid or already processed request"));
     }
 
     const customer = await Customer.findById(request.customer);
     if (!customer) {
-      return res.status(404).json(new ApiResponse(404, {}, "Customer not found"));
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, "Customer not found"));
     }
 
     const customerType = customer.type;
@@ -77,11 +91,18 @@ export const approveOrderRequest = async (req, res) => {
       const product = await Product.findById(item.product);
       if (!product) continue;
 
-      const unitPrice = customerType === "Wholesaler" ? product.priceWholesale : product.priceRetail;
+      const unitPrice =
+        customerType === "Wholesaler"
+          ? product.priceWholesale
+          : product.priceRetail;
       const total = unitPrice * item.quantity;
 
       if (product.stock < item.quantity) {
-        return res.status(400).json(new ApiResponse(400, {}, `Insufficient stock for ${product.name}`));
+        return res
+          .status(400)
+          .json(
+            new ApiResponse(400, {}, `Insufficient stock for ${product.name}`)
+          );
       }
 
       product.stock -= item.quantity;
@@ -102,7 +123,7 @@ export const approveOrderRequest = async (req, res) => {
       user: req.user._id,
       totalAmount,
       status: "Processing",
-      specialInstructions: request.specialInstructions || "",
+      specialInstructions: request.customerNote || "",
     });
 
     for (const item of orderItems) {
@@ -110,17 +131,19 @@ export const approveOrderRequest = async (req, res) => {
     }
 
     request.status = "Approved";
+    if (decisionNote) request.decisionNote = decisionNote;
     await request.save();
 
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          { orderId: order._id, displayOrderId: order.orderId },
-          "Order approved and created"
-        )
-      );
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          orderId: order._id,
+          displayOrderId: order.orderId,
+        },
+        "Order approved and created"
+      )
+    );
   } catch (error) {
     return res.status(500).json(new ApiResponse(500, {}, error.message));
   }
@@ -129,17 +152,55 @@ export const approveOrderRequest = async (req, res) => {
 // 🔹 Admin rejects request
 export const rejectOrderRequest = async (req, res) => {
   try {
-    const request = await OrderRequest.findById(req.params.id);
-    if (!request || request.status !== "Pending") {
-      return res.status(400).json(new ApiResponse(400, {}, "Invalid or already processed request"));
+    const { decisionNote } = req.body;
+    const { id } = req.params;
+
+    // Validate ID presence
+    if (!id) {
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, "Request ID is required"));
     }
 
+    // Find the order request by ID
+    const request = await OrderRequest.findById(id);
+
+    if (!request) {
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, "Order request not found"));
+    }
+
+    // Ensure the request is still pending
+    if (request.status !== "Pending") {
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(
+            400,
+            {},
+            `Cannot reject a request with status: ${request.status}`
+          )
+        );
+    }
+
+    // Update status and decision note
     request.status = "Rejected";
+    if (decisionNote && typeof decisionNote === "string") {
+      request.decisionNote = decisionNote;
+    }
+
     await request.save();
 
-    return res.status(200).json(new ApiResponse(200, {}, "Order request rejected"));
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { request }, "Order request rejected"));
   } catch (error) {
-    return res.status(500).json(new ApiResponse(500, {}, error.message));
+    return res
+      .status(500)
+      .json(
+        new ApiResponse(500, {}, "Internal server error: " + error.message)
+      );
   }
 };
 
@@ -188,7 +249,8 @@ export const getAllOrderRequests = async (req, res) => {
           customer: { $first: "$customer" },
           createdAt: { $first: "$createdAt" },
           status: { $first: "$status" },
-          note: { $first: "$note" },
+          customerNote: { $first: "$customerNote" },
+          decisionNote: { $first: "$decisionNote" },
           specialInstructions: { $first: "$specialInstructions" },
           items: {
             $push: {
@@ -214,7 +276,13 @@ export const getAllOrderRequests = async (req, res) => {
 
     return res
       .status(200)
-      .json(new ApiResponse(200, { requests: data, total }, "Order requests fetched"));
+      .json(
+        new ApiResponse(
+          200,
+          { requests: data, total },
+          "Order requests fetched"
+        )
+      );
   } catch (error) {
     return res.status(500).json(new ApiResponse(500, {}, error.message));
   }

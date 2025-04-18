@@ -127,7 +127,7 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// UPDATE ORDER
+// UPDATE ORDERS
 export const updateOrder = async (req, res) => {
   try {
     const { id } = req.params;
@@ -139,10 +139,7 @@ export const updateOrder = async (req, res) => {
       return res.status(404).json(new ApiResponse(404, {}, "Order not found"));
 
     // 1. Status History
-    if (status && status !== order.status) {
-      order.status = status;
-      order.statusHistory.push({ status });
-    }
+    const originalStatus = order.status;
 
     // 2. Handle Order Items Update
     if (items && Array.isArray(items)) {
@@ -211,6 +208,11 @@ export const updateOrder = async (req, res) => {
     } else {
       order.payment.status = "Paid";
       order.status = "Completed";
+    }
+
+    // Push to statusHistory only if status changed
+    if (order.status !== originalStatus) {
+      order.statusHistory.push({ status: order.status });
     }
 
     await order.save();
