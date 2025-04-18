@@ -48,7 +48,7 @@ export const registerUser = async (req, res) => {
           email: user.email,
           role: role.name,
           profileImg: user.profileImg,
-          token
+          token,
         },
         "User registered successfully"
       )
@@ -70,11 +70,12 @@ export const loginUser = async (req, res) => {
     }
 
     const token = generateToken(user._id, "user");
+
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json(
@@ -86,7 +87,7 @@ export const loginUser = async (req, res) => {
           email: user.email,
           role: user.role.name,
           profileImg: user.profileImg,
-          token
+          token,
         },
         "Login successful"
       )
@@ -123,7 +124,7 @@ export const registerCustomer = async (req, res) => {
       city,
       profileImg: profileImgUrl,
     });
-    
+
     const token = jwt.sign(
       { id: customer._id, type: "customer" },
       process.env.JWT_SECRET,
@@ -142,7 +143,7 @@ export const registerCustomer = async (req, res) => {
           type: customer.type,
           city: customer.city,
           profileImg: customer.profileImg,
-          token
+          token,
         },
         "Customer registered successfully"
       )
@@ -174,7 +175,7 @@ export const loginCustomer = async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -188,7 +189,7 @@ export const loginCustomer = async (req, res) => {
           type: customer.type,
           city: customer.city,
           profileImg: customer.profileImg,
-          token
+          token,
         },
         "Login successful"
       )
@@ -204,28 +205,37 @@ export const getCurrentUser = async (req, res) => {
     if (req.user) {
       const { _id, name, email, profileImg, isSuperAdmin, role } = req.user;
       return res.status(200).json(
-        new ApiResponse(200, {
-          _id,
-          name,
-          email,
-          profileImg,
-          isSuperAdmin,
-          role: role?.name || null, // Send only role name
-        }, "Logged-in user profile")
+        new ApiResponse(
+          200,
+          {
+            _id,
+            name,
+            email,
+            profileImg,
+            isSuperAdmin,
+            role: role?.name || null, // Send only role name
+          },
+          "Logged-in user profile"
+        )
       );
     } else if (req.customer) {
-      const { _id, name, email, profileImg, type, phone, city, location } = req.customer;
+      const { _id, name, email, profileImg, type, phone, city, location } =
+        req.customer;
       return res.status(200).json(
-        new ApiResponse(200, {
-          _id,
-          name,
-          email,
-          profileImg,
-          type,
-          phone,
-          city, 
-          location
-        }, "Logged-in customer profile")
+        new ApiResponse(
+          200,
+          {
+            _id,
+            name,
+            email,
+            profileImg,
+            type,
+            phone,
+            city,
+            location,
+          },
+          "Logged-in customer profile"
+        )
       );
     } else {
       return res.status(401).json(new ApiResponse(401, {}, "Not authorized"));
@@ -234,7 +244,6 @@ export const getCurrentUser = async (req, res) => {
     return res.status(500).json(new ApiResponse(500, {}, error.message));
   }
 };
-
 
 export const logout = (req, res) => {
   res.clearCookie("token", {
