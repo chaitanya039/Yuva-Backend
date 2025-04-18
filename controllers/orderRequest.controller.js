@@ -247,7 +247,7 @@ export const getAllOrderRequests = async (req, res) => {
         $group: {
           _id: "$_id",
           customer: { $first: "$customer" },
-          createdAt: { $first: "$createdAt" },
+          requestedAt: { $first: "$requestedAt" },
           status: { $first: "$status" },
           customerNote: { $first: "$customerNote" },
           decisionNote: { $first: "$decisionNote" },
@@ -285,5 +285,64 @@ export const getAllOrderRequests = async (req, res) => {
       );
   } catch (error) {
     return res.status(500).json(new ApiResponse(500, {}, error.message));
+  }
+};
+
+// @desc  Get all order requests of the currently logged-in customer
+// @route GET /order-requests/my
+// @access Customer (protected route)
+export const getOrderRequestsByCustomer = async (req, res) => {
+  try {
+    const customerId = req.customer._id; // assuming req.user is the logged-in customer
+
+    const requests = await OrderRequest.aggregate([
+      {
+        $match: { customer: customerId },
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customer",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      { $unwind: "$customer" },
+      { $unwind: { path: "$items", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "items.product",
+        },
+      },
+      { $unwind: { path: "$items.product", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: "$_id",
+          customer: { $first: "$customer" },
+          status: { $first: "$status" },
+          customerNote: { $first: "$customerNote" },
+          decisionNote: { $first: "$decisionNote" },
+          requestedAt: { $first: "$requestedAt" },
+          items: {
+            $push: {
+              product: "$items.product",
+              quantity: "$items.quantity",
+            },
+          },
+        },
+      },
+      { $sort: { requestedAt: -1 } }
+    ]);
+
+    return res.status(200).json(
+      new ApiResponse(200, requests, "Order requests fetched for customer")
+    );
+  } catch (err) {
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, err.message || "Server error"));
   }
 };

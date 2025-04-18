@@ -3,7 +3,8 @@ import {
   createOrderRequest,
   getAllOrderRequests,
   approveOrderRequest,
-  rejectOrderRequest
+  rejectOrderRequest,
+  getOrderRequestsByCustomer
 } from '../controllers/orderRequest.controller.js';
 
 import { protect } from '../middlewares/auth.middleware.js';
@@ -15,6 +16,7 @@ router.post('/', protect, createOrderRequest);
 
 // Admin manages requests
 router.get('/', protect, getAllOrderRequests);
+router.get("/my", protect, getOrderRequestsByCustomer);
 router.put('/approve/:id', protect, approveOrderRequest);
 router.put('/reject/:id', protect, rejectOrderRequest);
 
