@@ -7,17 +7,17 @@ import {
   getOrderRequestsByCustomer
 } from '../controllers/orderRequest.controller.js';
 
-import { protect } from '../middlewares/auth.middleware.js';
+import { protectUser } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
 // Customer submits request
-router.post('/', protect, createOrderRequest);
+router.post('/', protectUser, createOrderRequest);
 
 // Admin manages requests
-router.get('/', protect, getAllOrderRequests);
-router.get("/my", protect, getOrderRequestsByCustomer);
-router.put('/approve/:id', protect, approveOrderRequest);
-router.put('/reject/:id', protect, rejectOrderRequest);
+router.get('/', protectUser, getAllOrderRequests);
+router.get("/my", protectUser, getOrderRequestsByCustomer);
+router.put('/approve/:id', protectUser, approveOrderRequest);
+router.put('/reject/:id', protectUser, rejectOrderRequest);
 
 export default router;

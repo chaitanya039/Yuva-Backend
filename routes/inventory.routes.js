@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect } from '../middlewares/auth.middleware.js';
+import { protectUser } from '../middlewares/auth.middleware.js';
 import multer from 'multer';
 
 import {
@@ -17,8 +17,8 @@ const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
 // 🔁 Stock Management
-router.patch('/update-stock/:productId', protect, updateStock);
-router.get('/stock-history/:productId', protect, getStockHistory);
+router.patch('/update-stock/:productId', protectUser, updateStock);
+router.get('/stock-history/:productId', protectUser, getStockHistory);
 
 // 📊 Dashboard Analytics
 router.get('/overview', getInventoryOverview);

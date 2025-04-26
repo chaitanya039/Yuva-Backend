@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect } from '../middlewares/auth.middleware.js';
+import { protectUser } from '../middlewares/auth.middleware.js';
 import {
   exportOrdersToExcel,
   exportExpensesToExcel,
@@ -14,8 +14,8 @@ import {
 
 const router = express.Router();
 
-// Protect every report route
-router.use(protect);
+// protectUser every report route
+router.use(protectUser);
 
 // Excel & PDF exports
 router.get('/orders/export', exportOrdersToExcel);

@@ -9,20 +9,20 @@ import {
   getTopCustomersPaymentBehavior,
   getMonthlyCollectionTrend,
 } from "../controllers/payment.analysis.controller.js";
-import { protect } from "../middlewares/auth.middleware.js";
+import { protectUser } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 // 📊 Core KPIs
-router.get("/total-revenue", protect, getTotalRevenueCollected);
-router.get("/outstanding-balance", protect, getOutstandingBalance);
-router.get("/average-recovery", protect, getAverageRecoveryPercentage);
-router.get("/payment-status-distribution", protect, getPaymentStatusDistribution);
-router.get("/discount-stats", protect, getDiscountStats);
+router.get("/total-revenue", protectUser, getTotalRevenueCollected);
+router.get("/outstanding-balance", protectUser, getOutstandingBalance);
+router.get("/average-recovery", protectUser, getAverageRecoveryPercentage);
+router.get("/payment-status-distribution", protectUser, getPaymentStatusDistribution);
+router.get("/discount-stats", protectUser, getDiscountStats);
 
 // 📍 Advanced Insights
-router.get("/monthly-collection-trend", protect, getMonthlyCollectionTrend);
-router.get("/partial-payments", protect, getPartialPaymentsAndHighDueCustomers);
-router.get("/top-customers", protect, getTopCustomersPaymentBehavior);
+router.get("/monthly-collection-trend", protectUser, getMonthlyCollectionTrend);
+router.get("/partial-payments", protectUser, getPartialPaymentsAndHighDueCustomers);
+router.get("/top-customers", protectUser, getTopCustomersPaymentBehavior);
 
 export default router;

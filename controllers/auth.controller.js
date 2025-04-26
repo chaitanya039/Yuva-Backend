@@ -5,7 +5,6 @@ import generateToken from "../utils/jwt.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-import { token } from "morgan";
 
 // ==================== USER CONTROLLERS ====================
 
@@ -39,6 +38,8 @@ export const registerUser = async (req, res) => {
       profileImg: profileImgUrl,
     });
 
+    const token = generateToken(user._id, "user");
+
     return res.status(201).json(
       new ApiResponse(
         201,
@@ -71,7 +72,8 @@ export const loginUser = async (req, res) => {
 
     const token = generateToken(user._id, "user");
 
-    res.cookie("token", token, {
+    // Set a cookie specific to user
+    res.cookie("user_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
@@ -133,6 +135,14 @@ export const registerCustomer = async (req, res) => {
       }
     );
 
+    // Set a cookie specific to customer
+    res.cookie("customer_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return res.status(201).json(
       new ApiResponse(
         201,
@@ -172,7 +182,8 @@ export const loginCustomer = async (req, res) => {
       }
     );
 
-    res.cookie("token", token, {
+    // Set a cookie specific to customer
+    res.cookie("customer_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
@@ -200,6 +211,9 @@ export const loginCustomer = async (req, res) => {
 };
 
 // ==================== PROFILE ====================
+
+// ==================== USER PROFILE ====================
+
 export const getCurrentUser = async (req, res) => {
   try {
     if (req.user) {
@@ -213,12 +227,24 @@ export const getCurrentUser = async (req, res) => {
             email,
             profileImg,
             isSuperAdmin,
-            role: role?.name || null, // Send only role name
+            role: role?.name || null,
           },
-          "Logged-in user profile"
+          "Logged-in user (admin) profile"
         )
       );
-    } else if (req.customer) {
+    } else {
+      return res.status(401).json(new ApiResponse(401, {}, "Not authorized"));
+    }
+  } catch (error) {
+    return res.status(500).json(new ApiResponse(500, {}, error.message));
+  }
+};
+
+// ==================== CUSTOMER PROFILE ====================
+
+export const getCustomerProfile = async (req, res) => {
+  try {
+    if (req.customer) {
       const { _id, name, email, profileImg, type, phone, city, location } =
         req.customer;
       return res.status(200).json(
@@ -245,14 +271,30 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
-export const logout = (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
-  });
 
+// ==================== COMMON LOGOUT ====================
+
+export const logout = (req, res) => {
+  // Check if it's a user or customer based on the type (role)
+  if (req.user) {
+    // Clear user_token if logged in as a user (admin)
+    res.clearCookie("user_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
+    });
+  } else if (req.customer) {
+    // Clear customer_token if logged in as a customer
+    res.clearCookie("customer_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "strict",
+    });
+  }
+
+  // Return successful logout response
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "Logged out successfully"));
 };
+

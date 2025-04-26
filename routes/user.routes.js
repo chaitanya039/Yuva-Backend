@@ -1,7 +1,7 @@
 // routes/user.routes.js
 
 import express from 'express';
-import { protect } from '../middlewares/auth.middleware.js';
+import { protectUser } from '../middlewares/auth.middleware.js';
 import { authorizeRoles } from '../middlewares/role.middleware.js';
 import upload from '../middlewares/multer.middleware.js';
 import {
@@ -16,8 +16,8 @@ import {
 
 const router = express.Router();
 
-// All routes below are protected
-router.use(protect);
+// All routes below are protectUser
+router.use(protectUser);
 
 // ✅ GET all roles — for dropdowns
 router.get('/roles', authorizeRoles('Admin'), getAllRoles);

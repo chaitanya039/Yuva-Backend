@@ -8,12 +8,12 @@ import {
   getMonthlyExpenseTrend
 } from '../controllers/expense.controller.js';
 
-import { protect } from '../middlewares/auth.middleware.js';
+import { protectUser } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
 // Create a new expense
-router.post('/', protect, createExpense);
+router.post('/', protectUser, createExpense);
 
 // Get all expenses with optional filters
 router.get('/', getAllExpenses);
@@ -22,12 +22,12 @@ router.get('/', getAllExpenses);
 router.get('/category/:category', getExpensesByCategory);
 
 // Update an expense
-router.put('/:id', protect, updateExpense);
+router.put('/:id', protectUser, updateExpense);
 
 // Delete an expense
-router.delete('/:id', protect, deleteExpense);
+router.delete('/:id', protectUser, deleteExpense);
 
-router.get('/trend/monthly', protect, getMonthlyExpenseTrend);
+router.get('/trend/monthly', protectUser, getMonthlyExpenseTrend);
 
 
 export default router;
